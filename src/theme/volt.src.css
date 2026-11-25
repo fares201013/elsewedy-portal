@@ -497,3 +497,11 @@ B .empty-state::before,B .request-empty::before{animation:none !important;filter
 /* v7 — the empty-state drum "breathes": slow float + tiny swell */
 @keyframes vx-breathe{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(0,-7px,0) scale(1.025)}}
 B .empty-state::before,B .request-empty::before{animation:vx-breathe 9s cubic-bezier(.45,0,.55,1) infinite !important;will-change:transform}
+
+/* v8 — plain cards (no layout class of their own) get real inner spacing */
+B .card[class="card"],B .card[class="card "]{padding:clamp(20px,2vw,30px) !important}
+B .card[class="card "]>h2:first-child,B .card[class="card"]>h2:first-child{margin-top:0}
+/* hero art always fits inside the band */
+.vx-ph-img,.vx-ph-img.wide{max-width:100%;max-height:200px;margin:0;object-fit:contain}
+B .vx-ph-art{overflow:visible}
+B .card.approval-timeline{padding:clamp(20px,2vw,30px) !important}
