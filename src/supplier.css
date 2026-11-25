@@ -1,0 +1,322 @@
+/* =========================================================================
+   ELSEWEDY ELECTRIC - SUPPLIER PORTAL STYLESHEET
+   Harmonized with the unified design language and tokens in index.css
+   ========================================================================= */
+
+.brand-subtitle {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  font-weight: 750;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.avatar-supplier {
+  background: linear-gradient(135deg, #a83232, #c7111c) !important;
+  color: #fff !important;
+}
+
+/* ================= ROLE GATE / AUTHENTICATION ================= */
+.role-gate {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 80% 10%, rgba(199, 17, 28, 0.12), transparent 45%), #efeff1;
+  color: var(--ink, #17171a);
+}
+
+html[data-theme="dark"] .role-gate {
+  background: radial-gradient(circle at 80% 10%, rgba(199, 17, 28, 0.16), transparent 45%), #17181b;
+  color: #f1f1f3;
+}
+
+.role-gate-header {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px clamp(20px, 4vw, 48px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.role-gate-main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px clamp(16px, 3vw, 40px) 48px;
+  box-sizing: border-box;
+}
+
+.gate-panel {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 48px);
+  border-radius: 20px;
+  box-sizing: border-box;
+  animation: card-rise 0.4s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.gate-panel.gate-login {
+  width: min(480px, 100%);
+}
+
+.gate-panel h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(26px, 3.5vw, 36px);
+  letter-spacing: -0.04em;
+}
+
+.gate-panel p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 28px 0;
+}
+
+.role-card-btn {
+  padding: 24px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 12px;
+  cursor: pointer;
+  transition: transform 0.22s var(--ease-luxe, ease), box-shadow 0.22s ease, border-color 0.22s ease;
+  color: inherit;
+}
+
+.role-card-btn:hover {
+  transform: translateY(-4px);
+  border-color: rgba(199, 17, 28, 0.45);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+}
+
+.role-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(199, 17, 28, 0.1);
+  color: var(--red);
+  display: grid;
+  place-items: center;
+}
+
+.role-card-btn strong {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.role-card-btn small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.role-link {
+  margin-top: auto;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gate-login {
+  width: min(480px, 100%);
+}
+
+/* ================= TIMELINE & TRACKING ================= */
+.request-tracking-card {
+  padding: 22px;
+}
+
+.request-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  padding-left: 6px;
+}
+
+.request-stage {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  min-height: 58px;
+  color: var(--muted);
+}
+
+.request-stage:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 36px;
+  bottom: -10px;
+  width: 2px;
+  background: var(--line);
+}
+
+.request-stage.done::after {
+  background: #39734d;
+}
+
+.request-stage.current::after {
+  background: var(--line);
+}
+
+.request-stage > span {
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.request-stage.done > span {
+  border-color: #39734d;
+  background: rgba(57, 115, 77, 0.15);
+  color: #39734d;
+}
+
+html[data-theme="dark"] .request-stage.done > span {
+  border-color: #427051;
+  background: rgba(66, 112, 81, 0.25);
+  color: #9bd1a8;
+}
+
+.request-stage.current > span {
+  border-color: var(--red);
+  background: var(--surface);
+  color: var(--red);
+  box-shadow: 0 0 0 4px rgba(199, 17, 28, 0.12);
+}
+
+.request-stage.blocked > span {
+  border-color: #a92a36;
+  background: rgba(169, 42, 54, 0.12);
+  color: #a92a36;
+}
+
+.request-stage > div {
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.request-stage strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.request-stage small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.request-stage p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.request-stage.current strong {
+  color: var(--red);
+}
+
+.request-stage.current p {
+  color: var(--ink);
+}
+
+/* ================= AI QUOTATION ASSISTANT LAYOUT ================= */
+.assistant-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.supplier-chat-card {
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+.supplier-chat-card .chat-messages {
+  max-height: 380px;
+}
+
+.quote-form-card {
+  padding: 20px;
+}
+
+/* ================= FORMAL QUOTATION DOCUMENT ================= */
+.quotation-document {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 48px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--soft-shadow);
+}
+
+/* ================= SPEC LIST ================= */
+.spec-list li {
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+/* ================= RESPONSIVE ADJUSTMENTS ================= */
+@media (max-width: 900px) {
+  .assistant-layout {
+    grid-template-columns: 1fr;
+  }
+  .role-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .sidebar,
+  .topbar,
+  .page-heading,
+  .request-detail-actions,
+  .form-actions {
+    display: none !important;
+  }
+  .portal-wrap,
+  .portal {
+    background: #fff !important;
+    display: block !important;
+  }
+  .page-content {
+    padding: 0 !important;
+  }
+  .quotation-document {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}
