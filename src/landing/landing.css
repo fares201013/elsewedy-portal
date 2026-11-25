@@ -341,3 +341,21 @@ html.lx-page:has(.lx.is-dark),html.lx-page:has(.lx.is-dark) body{background:#0e0
 }
 
 .lx-tile-img-xl{width:44%;max-height:220px;top:40px;right:30px}
+
+/* flow as a responsive grid: every step visible, no sideways scrolling */
+.lx-flow{height:auto;overflow:visible;padding:16vh 0 14vh;justify-content:flex-start}
+.lx-flow-track{width:auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;padding:0 clamp(20px,5vw,80px);transform:none !important;flex-direction:row}
+.lx-flow-track::before{display:none !important}
+.lx-flow-card{width:auto;flex:none;margin:0;min-width:0}
+.lx-flow-card{--on:clamp(0,calc((var(--flow) * 11 - var(--i)) * 3),1)}
+.lx-flow-node{left:auto;right:22px;top:24px}
+.lx-flow-card::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:0 0 22px 22px;background:linear-gradient(90deg,var(--copper),var(--red2));transform:scaleX(var(--on));transform-origin:left;transition:transform .4s}
+@media (max-width:1100px){.lx-flow-track{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.lx-flow-track{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 16px}.lx-flow-card{padding:20px}.lx-flow-card h3{font-size:20px;margin-top:128px}.lx-flow-img{height:96px}}
+@media (max-width:420px){.lx-flow-track{grid-template-columns:1fr}}
+.lx-portal-img{top:5%;right:-2%;width:46%;max-height:40%}
+.lx-portal h3{position:relative;z-index:1}
+@media (max-width:760px){
+  .lx-portal{min-height:500px}
+  .lx-portal-img{width:52%;max-height:30%;top:12%;right:-4%}
+}

@@ -187,38 +187,21 @@ export default function Landing({ requests = [], quotations = [], orders = [], o
         }
       );
 
-      // horizontal flow on wide screens, vertical stack on phones
-      const mm = gsap.matchMedia();
-      mm.add('(min-width: 900px)', () => {
-        const track = document.querySelector('.lx-flow-track');
-        const distance = () => track.scrollWidth - window.innerWidth + 80;
-        gsap.to(track, {
-          x: () => -distance(),
-          ease: 'none',
-          scrollTrigger: {
-            trigger: '.lx-flow',
-            start: 'top top',
-            end: () => `+=${distance()}`,
-            pin: true,
-            scrub: 0.6,
-            invalidateOnRefresh: true,
-            onUpdate(self) {
-              document.querySelector('.lx-flow')?.style.setProperty('--flow', self.progress.toFixed(4));
-            },
-          },
-        });
+      // the flow: cards light up one by one as the section scrolls through
+      ScrollTrigger.create({
+        trigger: '.lx-flow',
+        start: 'top 75%',
+        end: 'bottom 55%',
+        scrub: true,
+        onUpdate(self) {
+          document.querySelector('.lx-flow')?.style.setProperty('--flow', self.progress.toFixed(4));
+        },
       });
-      mm.add('(max-width: 899px)', () => {
-        ScrollTrigger.create({
-          trigger: '.lx-flow',
-          start: 'top 60%',
-          end: 'bottom 60%',
-          scrub: true,
-          onUpdate(self) {
-            document.querySelector('.lx-flow')?.style.setProperty('--flow', self.progress.toFixed(4));
-          },
-        });
-      });
+      gsap.fromTo(
+        '.lx-flow-card',
+        { y: 50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: 'expo.out', stagger: 0.06, scrollTrigger: { trigger: '.lx-flow-track', start: 'top 85%', once: true } }
+      );
 
       // counters
       gsap.utils.toArray('.lx-stat b[data-to]').forEach((el) => {
@@ -457,10 +440,6 @@ export default function Landing({ requests = [], quotations = [], orders = [], o
             <h2 className="lx-h2">Ten steps.<br /><em>Zero</em> lost requests.</h2>
           </div>
           <div className="lx-flow-track">
-            <svg className="lx-flow-wire" viewBox="0 0 1000 40" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M0 20 C 120 0, 220 40, 340 20 S 560 0, 680 20 S 880 40, 1000 20" className="base" />
-              <path d="M0 20 C 120 0, 220 40, 340 20 S 560 0, 680 20 S 880 40, 1000 20" className="live" pathLength="1" />
-            </svg>
             {FLOW.map(([title, text, img], i) => (
               <article className="lx-flow-card" key={title} style={{ '--i': i }}>
                 <img className="lx-flow-img" src={`./assets/cables/${img}.webp`} alt="" />
