@@ -272,11 +272,8 @@ html.lx-has-cursor .lx-cursor,html.lx-has-cursor .lx-cursor-ring{display:block;p
   .lx-nav .lx-btn{height:40px}
   .lx-footer-row{flex-direction:column;align-items:flex-start}
 }
-@media (prefers-reduced-motion:reduce){
-  .lx *,.lx *::before,.lx *::after{animation:none !important;transition:none !important}
-  .lx-manifesto-text .w{opacity:1}
-  .lx-line>span,.lx-lede,.lx-hero-cta{transform:none !important;opacity:1 !important}
-}
+@media (prefers-reduced-motion:reduce){.lx-grain{animation:none}}
+
 @media (max-width:600px){
   .lx-hero-glow{background:linear-gradient(0deg,rgba(241,235,226,.95) 30%,rgba(241,235,226,.45) 62%,transparent 80%),radial-gradient(ellipse 60% 45% at 62% 40%,rgba(211,18,30,.2),transparent 70%)}
 }

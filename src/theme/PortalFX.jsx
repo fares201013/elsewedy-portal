@@ -20,7 +20,7 @@ export function CableHero({ view = 'cutaway', cycle = true, poster = './assets/c
     let raf = 0;
     let visible = true;
     let cancelled = false;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = false;
 
     import('../landing/CableScene.js')
       .then(({ createCableScene }) => {
@@ -124,7 +124,7 @@ export function Wipe({ phase }) {
 export function useFx(dep) {
   useEffect(() => {
     const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = false;
     const SPOT = '.card, .vx-tile, .vx-kpi, .approval-card, .report-card, .destination-badge, .supplier-hub-badge, .vx-dest, .request-entry, .supplier-tender-card, .role-card-btn';
 
     const onMove = (e) => {

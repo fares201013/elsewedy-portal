@@ -75,7 +75,9 @@ export default function Landing({ requests = [], quotations = [], orders = [], o
   const [charge, setCharge] = useState(0);
   const [stage, setStage] = useState(-1);
   const [heroP, setHeroP] = useState(0);
-  const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
+  // Motion stays on even when the OS asks for reduced motion (only smooth-scroll hijacking is skipped)
+  const reduced = false;
+  const calmScroll = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
 
   const stats = useMemo(() => {
     const live = requests.filter((r) => r.status !== 'Draft');
@@ -99,7 +101,7 @@ export default function Landing({ requests = [], quotations = [], orders = [], o
     const start = performance.now();
     let raf = 0;
     const tick = (now) => {
-      const t = Math.min(1, (now - start) / 1700);
+      const t = Math.min(1, Math.max(0, (now - start) / 1700));
       const eased = 1 - Math.pow(1 - t, 3);
       setCharge(Math.round(eased * 100));
       if (t < 1) raf = requestAnimationFrame(tick);
@@ -144,7 +146,7 @@ export default function Landing({ requests = [], quotations = [], orders = [], o
       root.current?.classList.add('lx-no-webgl');
     }
 
-    const lenis = reduced ? null : new Lenis({ duration: 1.15, smoothWheel: true });
+    const lenis = calmScroll ? null : new Lenis({ duration: 1.15, smoothWheel: true });
     let tickerFn;
     if (lenis) {
       lenis.on('scroll', ScrollTrigger.update);

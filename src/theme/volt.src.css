@@ -365,8 +365,7 @@ B .role-link{margin-top:auto;color:var(--vx-cu) !important;font-size:13px}
   .vx-title{font-size:46px}
 }
 @media (prefers-reduced-motion:reduce){
-  .vx-orb,.vx-grain,.vx-ticker-move,.vx-callout,.vx-flow-live::after{animation:none !important}
-  .vx-wipe{display:none}
+  .vx-grain{animation:none !important}
 }
 
 /* =====================================================================
