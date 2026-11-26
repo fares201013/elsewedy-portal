@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './theme/supplier-base.css';
 import CommandPalette from './CommandPalette.jsx';
-import { Ambient, CableHero, Count, PageHeading, Robot, RouteContext, Ticker, TruckScene, Wipe, useFx } from './theme/PortalFX.jsx';
+import { Ambient, CableHero, Count, PageHeading, Robot, RouteContext, SyncToast, Ticker, TruckScene, Wipe, useFx } from './theme/PortalFX.jsx';
 
 const DEFAULT_SUPPLIER_REQUESTS = [
   {
@@ -617,6 +617,7 @@ export default function SupplierPortal({
       <Ambient />
       <Wipe phase={transitionPhase} />
       <CommandPalette items={commands} />
+      <SyncToast />
       <div className="portal">
         {/* ================= SIDEBAR ================= */}
         <aside className={`sidebar ${mobileNav ? 'nav-open' : ''}`}>

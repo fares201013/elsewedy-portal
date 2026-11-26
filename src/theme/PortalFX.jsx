@@ -346,3 +346,30 @@ export function PageHeading({ title, subtitle, action, eyebrow }) {
     </header>
   );
 }
+
+/* ------------------------------------------------------------------
+   Live sync toasts (changes arriving from other devices)
+   ------------------------------------------------------------------ */
+export function SyncToast() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    const onSync = (e) => {
+      const id = Math.random().toString(36).slice(2);
+      setItems((list) => [...list.slice(-2), { id, text: e.detail?.text || 'Live update' }]);
+      window.setTimeout(() => setItems((list) => list.filter((x) => x.id !== id)), 4500);
+    };
+    window.addEventListener('volt-sync', onSync);
+    return () => window.removeEventListener('volt-sync', onSync);
+  }, []);
+  if (!items.length) return null;
+  return (
+    <div className="vx-sync-stack" role="status" aria-live="polite">
+      {items.map((item) => (
+        <div className="vx-sync-toast" key={item.id}>
+          <i className="vx-live" />
+          <span><small>Live from another device</small>{item.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}

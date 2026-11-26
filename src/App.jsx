@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import SupplierPortal, { RoleGate } from './SupplierPortal.jsx';
 import Landing from './landing/Landing.jsx';
 import CommandPalette from './CommandPalette.jsx';
-import { Ambient, CableHero, Count, PageHeading, Robot, RouteContext, Ticker, TruckScene, Wipe, useFx } from './theme/PortalFX.jsx';
+import { Ambient, CableHero, Count, PageHeading, Robot, RouteContext, SyncToast, Ticker, TruckScene, Wipe, useFx } from './theme/PortalFX.jsx';
 
 const NAV = [
   ['dashboard', 'Dashboard', 'home'],
@@ -619,6 +619,7 @@ function App() {
       <Ambient />
       <Wipe phase={transitionPhase} />
       <CommandPalette items={commands} />
+      <SyncToast />
       <div className="portal">
         <SideNav active={active} go={go} mobileNav={mobileNav} onLogout={logout} />
         <main className="main-area">
