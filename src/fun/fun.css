@@ -1,0 +1,100 @@
+/* ───────── copper cable cursor ───────── */
+.fx-cable { position: fixed; inset: 0; z-index: 9990; pointer-events: none; }
+
+/* ───────── Volt, the edge-dwelling robot ───────── */
+.volt {
+  --v-ease: cubic-bezier(.34, 1.56, .5, 1);
+  position: fixed; right: 0; bottom: 96px; z-index: 9000;
+  width: 96px; height: 120px; pointer-events: none;
+}
+.volt-bot {
+  all: unset; position: absolute; inset: 0; cursor: pointer; pointer-events: auto;
+  transform-origin: 70% 90%;
+  transform: translateX(150%);
+  transition: transform .7s var(--v-ease), filter .3s;
+  filter: drop-shadow(0 10px 14px rgba(90, 40, 10, .28));
+}
+.volt-bot:focus-visible { outline: 2px solid #e8913f; outline-offset: 4px; border-radius: 12px; }
+.volt-bot svg { width: 100%; height: 100%; overflow: visible; }
+.volt-peek .volt-bot { transform: translateX(52%) rotate(-12deg); }
+.volt-peek .volt-bot:hover { transform: translateX(36%) rotate(-6deg); }
+.volt-out .volt-bot { transform: translateX(-10px) rotate(0); }
+.volt-sleep .volt-bot { transform: translateX(56%) rotate(-18deg); }
+.volt-flee .volt-bot { transform: translateX(180%) rotate(25deg); transition: transform .45s cubic-bezier(.6, -0.4, .7, .2); }
+.volt-hidden .volt-bot { transform: translateX(160%); }
+
+.volt-shell { fill: #e07a2c; stroke: #8a3d14; stroke-width: 2.5; }
+.volt-shell-d { fill: #b5581b; stroke: #8a3d14; stroke-width: 2; }
+.volt-screen { fill: #1a0f09; stroke: #8a3d14; stroke-width: 1.5; }
+.volt-ant { stroke: #8a3d14; stroke-width: 3; stroke-linecap: round; }
+.volt-bulb { fill: #ffd08a; stroke: #8a3d14; stroke-width: 2; animation: volt-bulb 2.4s ease-in-out infinite; }
+.volt-eye { fill: #ffd27f; filter: drop-shadow(0 0 4px rgba(255, 190, 90, .9)); transform-box: fill-box; transform-origin: center; animation: volt-blink 5s ease-in-out infinite; }
+.volt-eyes { transition: transform .12s linear; }
+.volt-mouth { fill: none; stroke: #ffd27f; stroke-width: 2.5; stroke-linecap: round; transition: d .3s; }
+.volt-zz-eyes { fill: none; stroke: #ffd27f; stroke-width: 2.5; stroke-linecap: round; opacity: 0; }
+.volt-bolt { fill: #ffd08a; stroke: #8a3d14; stroke-width: 1.5; stroke-linejoin: round; }
+.volt-arm { fill: none; stroke: #8a3d14; stroke-width: 5; stroke-linecap: round; }
+.volt-arm-r { transform-box: view-box; transform-origin: 90px 92px; }
+
+/* moods */
+.volt-out .volt-arm-r { animation: volt-wave 1s ease-in-out 2; }
+.volt-m-happy .volt-mouth { d: path('M48 53 Q60 64 72 53'); }
+.volt-m-sad .volt-mouth { d: path('M50 59 Q60 52 70 59'); }
+.volt-m-sad .volt-eye { transform: scaleY(.6); animation: none; }
+.volt-m-shock .volt-mouth { d: path('M55 57 Q60 52 65 57 Q60 62 55 57'); }
+.volt-m-shock .volt-eye { transform: scale(1.25); animation: none; }
+.volt-m-shock.volt-out .volt-bot { animation: volt-jump .5s ease-out; }
+.volt-m-dance.volt-out .volt-bot { animation: volt-dance .5s ease-in-out 5; }
+.volt-m-dance .volt-mouth { d: path('M48 53 Q60 64 72 53'); }
+.volt-m-dance .volt-bolt { animation: volt-zap .25s steps(1) infinite; }
+
+/* sleeping */
+.volt-sleep .volt-eyes { opacity: 0; }
+.volt-sleep .volt-zz-eyes { opacity: 1; }
+.volt-sleep .volt-mouth { d: path('M55 56 H65'); }
+.volt-sleep .volt-bulb { animation: none; fill: #6b3a1c; }
+.volt-z { position: absolute; left: -6px; top: -6px; pointer-events: none; opacity: 0; }
+.volt-sleep .volt-z { opacity: 1; }
+.volt-z i {
+  position: absolute; font: italic 700 16px 'Instrument Serif', Georgia, serif; color: #c8641f;
+  opacity: 0; animation: volt-z 2.6s ease-out infinite;
+}
+.volt-z i:nth-child(2) { animation-delay: .85s; font-size: 20px; }
+.volt-z i:nth-child(3) { animation-delay: 1.7s; font-size: 26px; }
+
+/* speech bubble */
+.volt-bubble {
+  position: absolute; right: calc(100% + 2px); bottom: 64px;
+  width: max-content; max-width: min(250px, 62vw);
+  padding: 11px 14px; border-radius: 16px 16px 4px 16px;
+  background: #fffaf3; color: #1d1712; border: 1px solid rgba(200, 100, 31, .35);
+  box-shadow: 0 14px 30px -14px rgba(90, 40, 10, .45);
+  font: 500 13.5px/1.45 'Inter Tight Variable', system-ui, sans-serif;
+  transform-origin: 100% 100%;
+  animation: volt-pop .45s cubic-bezier(.34, 1.7, .5, 1);
+}
+.volt-bubble::after {
+  content: ''; position: absolute; right: -7px; bottom: 10px; width: 12px; height: 12px;
+  background: inherit; border-right: 1px solid rgba(200, 100, 31, .35); border-bottom: 1px solid rgba(200, 100, 31, .35);
+  transform: rotate(-45deg);
+}
+html[data-theme='dark'] .volt-bubble { background: #221811; color: #f6efe6; border-color: rgba(232, 145, 63, .4); }
+
+@keyframes volt-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+@keyframes volt-bulb { 50% { fill: #fff2d8; } }
+@keyframes volt-wave { 0%, 100% { transform: rotate(0); } 35% { transform: rotate(-22deg); } 70% { transform: rotate(12deg); } }
+@keyframes volt-jump { 30% { transform: translateX(-10px) translateY(-26px) rotate(-4deg); } 60% { transform: translateX(-10px) translateY(0) scale(1.05, .95); } }
+@keyframes volt-dance {
+  0%, 100% { transform: translateX(-10px) rotate(0); }
+  25% { transform: translateX(-16px) translateY(-8px) rotate(-10deg); }
+  75% { transform: translateX(-4px) translateY(-8px) rotate(10deg); }
+}
+@keyframes volt-zap { 50% { fill: #fff; } }
+@keyframes volt-z { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-22px, -38px); } }
+@keyframes volt-pop { from { opacity: 0; transform: scale(.5) translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 640px) {
+  .volt { width: 72px; height: 90px; bottom: 84px; }
+  .volt-bubble { font-size: 12.5px; bottom: 48px; }
+}
+@media print { .volt, .fx-cable { display: none; } }

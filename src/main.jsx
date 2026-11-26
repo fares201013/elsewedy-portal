@@ -4,6 +4,8 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import Intro from './intro/Intro.jsx';
+import CopperCable from './fun/CopperCable.jsx';
+import Volt from './fun/Volt.jsx';
 import '@fontsource/instrument-serif/400.css';
 import '@fontsource/instrument-serif/400-italic.css';
 import '@fontsource-variable/inter-tight';
@@ -18,6 +20,8 @@ function Root() {
   return (
     <>
       {showApp && <App />}
+      {showApp && <Volt />}
+      <CopperCable />
       {showIntro && (
         <Intro
           onExit={() => { window.__voltIntroPlayed = true; setShowApp(true); }}
