@@ -72,18 +72,39 @@ function pickVoice() {
 }
 
 // says text out loud while captions follow; captions only if the browser blocks speech
-function speakOut(text, { onWord, onDone }) {
+function speakOut(text, { onWord, onDone, clip }) {
   const words = text.split(' ');
-  let n = 0; let wt = 0; let st = 0; let dead = false; let finished = false; let started = false; let voiced = false;
+  let n = 0; let wt = 0; let st = 0; let lt = 0; let dead = false; let finished = false; let started = false; let voiced = false;
   const reveal = (ms) => {
     window.clearInterval(wt);
     wt = window.setInterval(() => { n += 1; onWord(n); if (n >= words.length) window.clearInterval(wt); }, ms);
   };
   const done = () => {
     if (finished || dead) return;
-    finished = true; window.clearInterval(wt); onWord(words.length); onDone();
+    finished = true; window.clearInterval(wt); window.clearTimeout(lt); onWord(words.length); onDone();
   };
   const silent = () => { if (started || dead) return; started = true; reveal(300); st = window.setTimeout(() => { if (!voiced) done(); }, words.length * 300 + 900); };
+  // a recorded voice line (public/assets/voice/volt-N.mp3) wins over the browser voice
+  if (clip) {
+    let tts = null;
+    const a = new Audio(clip);
+    a.preload = 'auto';
+    a.onplaying = () => {
+      if (started) return;
+      started = true;
+      const ms = a.duration && Number.isFinite(a.duration) ? (a.duration * 1000) / words.length : 320;
+      reveal(Math.max(160, ms * 0.9));
+    };
+    a.onended = done;
+    a.onerror = () => {
+      if (started || dead || finished) return;
+      finished = true; window.clearTimeout(lt); // hand over to the browser voice
+      tts = speakOut(text, { onWord, onDone });
+    };
+    a.play().catch((err) => { if (err && err.name === 'NotAllowedError') silent(); });
+    lt = window.setTimeout(done, 20000);
+    return () => { dead = true; window.clearInterval(wt); window.clearTimeout(st); a.pause(); tts?.(); };
+  }
   const synth = window.speechSynthesis;
   if (!synth || typeof window.SpeechSynthesisUtterance === 'undefined') { silent(); return () => { dead = true; }; }
   const u = new window.SpeechSynthesisUtterance(text.replace(/[^\p{L}\p{N}\s.,!?'’-]/gu, ''));
@@ -107,7 +128,15 @@ export default function Intro({ onExit, onDone }) {
   const [talking, setTalking] = useState(false);
   const [landed, setLanded] = useState(false);
   const [needTap, setNeedTap] = useState(false);
-  const [pos, setPos] = useState(() => ({ x: window.innerWidth / 2, y: window.innerHeight / 2, rot: 0, sx: 1, sy: 1, dur: 0 }));
+  const [side, setSide] = useState('to-right');
+  const [flying, setFlying] = useState(false);
+  const [cable, setCable] = useState('none'); // none | on | off
+  const [rocket, setRocket] = useState(false);
+  const roboRef = useRef(null);
+  const tiltRef = useRef(null);
+  const rafRef = useRef(0);
+  const flightOverride = useRef(false);
+  const posRef = useRef({ x: window.innerWidth / 2, y: -400, rot: 0 });
   const doneRef = useRef(false);
   const timers = useRef([]);
   const stopVoice = useRef(null);
@@ -133,31 +162,108 @@ export default function Intro({ onExit, onDone }) {
   };
 
   // zip around the whole screen a few times, then land on a spot
-  const roam = useCallback((hops, spot, cb) => {
-    setLanded(false);
-    let n = 0;
-    const hop = () => {
-      if (doneRef.current) return;
-      const { vw, vh } = size();
-      if (n >= hops) {
-        const s = spotXY(spot);
-        setPos({ x: s.x, y: s.y, rot: 0, sx: 1, sy: 1, dur: 520 });
-        after(() => { setPos((p) => ({ ...p, sx: 1.12, sy: 0.88, dur: 120 })); }, 520);
-        after(() => { setPos((p) => ({ ...p, sx: 1, sy: 1, dur: 260 })); setLanded(true); cb?.(); }, 650);
-        return;
-      }
-      n += 1;
-      const d = rand(260, 400);
-      setPos({ x: rand(0.08, 0.92) * vw, y: rand(0.12, 0.86) * vh, rot: rand(-28, 28), sx: rand(0.9, 1.1), sy: rand(0.9, 1.1), dur: d });
-      after(hop, d + 40);
+  // ── choreography: one smooth, deliberate flight between lines ──
+  const ease = {
+    inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+    outBack: (t) => { const c1 = 1.25; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); },
+    in: (t) => t * t * t,
+    sine: (t) => -(Math.cos(Math.PI * t) - 1) / 2,
+  };
+  const bez = (a, b, c, d) => (t) => {
+    const u = 1 - t;
+    return {
+      x: u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t * t * t * d.x,
+      y: u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t * t * t * d.y,
     };
-    hop();
-  }, []);
+  };
+  const apply = (x, y, rot) => {
+    posRef.current = { x, y, rot };
+    if (roboRef.current) roboRef.current.style.transform = `translate(${x}px, ${y}px)`;
+    if (tiltRef.current) tiltRef.current.style.transform = `rotate(${rot}deg)`;
+  };
+  const fly = ({ path, dur, easing = ease.inOut, bank = true, spin }, done) => {
+    setLanded(false); setFlying(true);
+    const t0 = performance.now();
+    let prev = path(0); let rot = posRef.current.rot || 0;
+    const frame = (now) => {
+      if (doneRef.current && !flightOverride.current) return;
+      const t = Math.min(1, (now - t0) / dur);
+      const p = path(easing(t));
+      const vx = p.x - prev.x;
+      prev = p;
+      const extra = spin ? spin(easing(t)) : 0;
+      const target = bank && !extra ? Math.max(-24, Math.min(24, vx * 1.3)) : 0;
+      rot += (target - rot) * 0.14;
+      apply(p.x, p.y, rot + extra);
+      if (t < 1) { rafRef.current = requestAnimationFrame(frame); return; }
+      apply(p.x, p.y, 0);
+      setFlying(false);
+      done?.();
+    };
+    rafRef.current = requestAnimationFrame(frame);
+  };
+  const robotH = () => (roboRef.current ? roboRef.current.offsetHeight : 200);
+
+  const moveTo = (i, cb) => {
+    const { vw, vh } = size();
+    const from = { x: posRef.current.x, y: posRef.current.y };
+    const to = spotXY(LINES[i].spot);
+    const land = () => { setSide(to.x > vw * 0.55 ? 'to-left' : 'to-right'); setLanded(true); cb(); };
+    if (i === 0) {
+      // drops in from the top, hanging from a copper cable, yo-yo bounce
+      setCable('on');
+      const start = { x: to.x, y: -robotH() };
+      apply(start.x, start.y, 0);
+      fly({ path: (t) => ({ x: start.x, y: start.y + (to.y - start.y) * t }), dur: 1500, easing: ease.outBack, bank: false }, land);
+      return;
+    }
+    if (i === 1) {
+      // unplug with a spark, then swoop down and up to the right
+      setCable('off');
+      after(() => fly({ path: bez(from, { x: from.x + vw * 0.04, y: from.y + vh * 0.42 }, { x: to.x - vw * 0.12, y: to.y + vh * 0.42 }, to), dur: 1800 }, land), 380);
+      return;
+    }
+    if (i === 2) {
+      // a big arc over the top of the screen to the employees card
+      fly({ path: bez(from, { x: from.x - vw * 0.12, y: -vh * 0.06 }, { x: to.x + vw * 0.12, y: -vh * 0.06 }, to), dur: 2000 }, land);
+      return;
+    }
+    if (i === 3) {
+      // loop-the-loop on the way to the suppliers card
+      const R = Math.min(vw * 0.13, vh * 0.2);
+      const path = (e) => {
+        let x = from.x + (to.x - from.x) * e;
+        let y = from.y + (to.y - from.y) * e + Math.sin(Math.PI * e) * vh * 0.26;
+        if (e > 0.25 && e < 0.75) {
+          const th = ((e - 0.25) / 0.5) * Math.PI * 2;
+          x += R * Math.sin(th) * 0.9; y -= R * (1 - Math.cos(th));
+        }
+        return { x, y };
+      };
+      const spin = (e) => (e > 0.25 && e < 0.75 ? -360 * ((e - 0.25) / 0.5) : 0);
+      fly({ path, dur: 3100, easing: ease.sine, spin }, land);
+      return;
+    }
+    // back to centre with a swoop underneath and a spin to finish
+    fly({
+      path: bez(from, { x: from.x, y: vh * 0.72 }, { x: to.x + vw * 0.22, y: vh * 0.66 }, to),
+      dur: 2000,
+      spin: (e) => (e > 0.72 ? 360 * ((e - 0.72) / 0.28) : 0),
+    }, land);
+  };
+
+  // "Let's go!" — blasts off through the top of the screen
+  const blastOff = (cb) => {
+    const from = { x: posRef.current.x, y: posRef.current.y };
+    setRocket(true);
+    fly({ path: (t) => ({ x: from.x, y: from.y + (-robotH() * 1.6 - from.y) * t }), dur: 950, easing: ease.in, bank: false }, cb);
+  };
 
   const finish = useCallback(() => {
     if (doneRef.current) return;
     doneRef.current = true;
     stopVoice.current?.();
+    if (!flightOverride.current) cancelAnimationFrame(rafRef.current);
     setTalking(false);
     setPhase('exit');
     onExit?.();
@@ -167,29 +273,27 @@ export default function Intro({ onExit, onDone }) {
   const say = useCallback((i) => {
     if (doneRef.current) return;
     if (i >= LINES.length) {
-      // victory lap, then vanish
-      roam(4, 'mid', () => after(finish, 500));
+      blastOff(finish);
       return;
     }
     const L = LINES[i];
     const go = () => {
       setLine(i); setShown(0); setTalking(true);
       stopVoice.current = speakOut(L.text, {
+        clip: `./assets/voice/volt-${i + 1}.mp3`,
         onWord: (n) => setShown(n),
         onDone: () => { setTalking(false); after(() => say(i + 1), 800); },
       });
     };
-    if (i === 0) {
-      const s = spotXY(L.spot);
-      setPos({ x: s.x, y: s.y, rot: 0, sx: 1, sy: 1, dur: 700 });
-      after(() => { setLanded(true); go(); }, 760);
-    } else roam(Math.round(rand(3, 5)), L.spot, go);
-  }, [roam, finish]);
+    moveTo(i, go);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finish]);
 
   // the whole show runs on its own
   useEffect(() => {
     document.documentElement.classList.add('iv-lock');
     audio();
+    apply(window.innerWidth / 2, -400, 0);
     try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* warm up */ }
     tryResume().then((ok) => { if (!ok && !doneRef.current) setNeedTap(true); });
 
@@ -198,7 +302,7 @@ export default function Intro({ onExit, onDone }) {
     after(() => boom(), POP_MS);
     after(() => setPhase('pop'), POP_MS);
     after(() => setPhase('live'), LIVE_MS);
-    after(() => say(0), LIVE_MS + 200);
+    after(() => say(0), POP_MS + 350);
 
     const unlock = () => {
       tryResume().then((ok) => {
@@ -211,6 +315,7 @@ export default function Intro({ onExit, onDone }) {
     window.addEventListener('keydown', onKey);
     return () => {
       timers.current.forEach((t) => window.clearTimeout(t));
+      cancelAnimationFrame(rafRef.current);
       stopVoice.current?.();
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', onKey);
@@ -223,7 +328,6 @@ export default function Intro({ onExit, onDone }) {
   const words = cur ? cur.text.split(' ') : [];
   const progress = line < 0 ? 0 : (line + (shown >= words.length ? 1 : 0.5)) / LINES.length;
   const { vw, mobile } = size();
-  const bubbleLeft = pos.x > vw * 0.55; // bubble goes on the side facing the middle
   const showBubble = !mobile && landed && cur && phase === 'live';
 
   const caption = (
@@ -232,7 +336,7 @@ export default function Intro({ onExit, onDone }) {
 
   return (
     <div
-      className={`iv iv-${phase} ${cur?.jump && landed ? 'iv-jump' : ''} ${theme === 'dark' ? 'iv-dark' : ''} ${talking ? 'iv-talking' : ''} ${landed ? 'iv-landed' : 'iv-moving'}`}
+      className={`iv iv-${phase} ${cur?.jump && landed ? 'iv-jump' : ''} ${theme === 'dark' ? 'iv-dark' : ''} ${talking ? 'iv-talking' : ''} ${landed ? 'iv-landed' : ''} ${flying ? 'iv-flying' : ''} ${rocket ? 'iv-rocket' : ''} iv-cable-${cable}`}
       role="dialog"
       aria-label="Welcome"
     >
@@ -283,8 +387,10 @@ export default function Intro({ onExit, onDone }) {
       </div>
 
       {/* Volt himself, free to run anywhere */}
-      <div className="iv-robo" style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, transitionDuration: `${pos.dur}ms` }}>
-        <div className="iv-robo-tilt" style={{ transform: `rotate(${pos.rot}deg) scale(${pos.sx}, ${pos.sy})`, transitionDuration: `${pos.dur}ms` }}>
+      <div className="iv-robo" ref={roboRef}>
+        <div className="iv-hang" aria-hidden="true"><i /></div>
+        <div className="iv-robo-tilt" ref={tiltRef}>
+          <div className="iv-flame" aria-hidden="true"><i /><i /></div>
           <div className="iv-bob">
             <div className="iv-popper">
           <svg className="iv-bot" viewBox="0 0 320 370" aria-hidden="true">
@@ -358,7 +464,7 @@ export default function Intro({ onExit, onDone }) {
           </div>
         </div>
         {showBubble && (
-          <div className={`iv-bubble ${bubbleLeft ? 'to-left' : 'to-right'}`} key={line} aria-live="polite">{caption}</div>
+          <div className={`iv-bubble ${side}`} key={line} aria-live="polite">{caption}</div>
         )}
       </div>
 

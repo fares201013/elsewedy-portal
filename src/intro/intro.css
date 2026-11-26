@@ -65,14 +65,31 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   position: absolute; left: 0; top: 0; z-index: 5;
   width: var(--w); height: calc(var(--w) * 1.156);
   margin: calc(var(--w) * -0.578) 0 0 calc(var(--w) * -0.5);
-  transition-property: transform; transition-timing-function: cubic-bezier(.5, 0, .2, 1);
   will-change: transform; pointer-events: none;
 }
-.iv-robo-tilt { width: 100%; height: 100%; transition-property: transform; transition-timing-function: cubic-bezier(.5, 0, .2, 1); }
+.iv-robo-tilt { position: relative; width: 100%; height: 100%; will-change: transform; }
 .iv-bob { width: 100%; height: 100%; }
 .iv-landed.iv-live .iv-bob { animation: iv-float 2.6s ease-in-out infinite; }
+.iv-landed.iv-cable-on .iv-bob { animation: iv-sway 2.4s ease-in-out infinite; transform-origin: 50% 0; }
+
+/* hanging cable he drops in on */
+.iv-hang { position: absolute; left: 50%; bottom: 96%; width: 5px; height: 160vh; margin-left: -2.5px; opacity: 0; transform-origin: 50% 100%; }
+.iv-hang::before { content: ''; position: absolute; inset: 0; border-radius: 3px; background: linear-gradient(90deg, #7a3410, #e8913f 45%, #ffe0b0 55%, #b5581b); box-shadow: 0 0 8px rgba(232, 145, 63, .5); }
+.iv-hang i { position: absolute; left: 50%; bottom: -6px; width: 14px; height: 10px; margin-left: -7px; border-radius: 3px; background: #8a3d14; }
+.iv-cable-on .iv-hang { opacity: 1; }
+.iv-cable-off .iv-hang { opacity: 1; transform: translateY(-170vh); transition: transform .7s cubic-bezier(.6, 0, .9, .4); }
+.iv-cable-off .iv-hang i { box-shadow: 0 0 0 0 #fff; animation: iv-unplug .45s ease-out; }
+
+/* little jet flame while flying */
+.iv-flame { position: absolute; left: 50%; top: 84%; width: 46px; height: 60px; margin-left: -23px; opacity: 0; transform: scaleY(.3); transform-origin: 50% 0; transition: opacity .25s, transform .25s; pointer-events: none; }
+.iv-flame i { position: absolute; left: 50%; top: 0; width: 18px; height: 100%; margin-left: -9px; border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%; background: radial-gradient(ellipse at 50% 20%, #fff6e0, #ffb760 40%, rgba(232, 110, 30, 0) 75%); filter: blur(1px); animation: iv-flicker .12s ease-in-out infinite alternate; }
+.iv-flame i + i { width: 34px; margin-left: -17px; height: 80%; opacity: .55; animation-duration: .17s; }
+.iv-flying .iv-flame { opacity: 1; transform: scaleY(1); }
+.iv-rocket .iv-flame { transform: scaleY(1.8); }
+.iv-cable-on .iv-flame { opacity: 0 !important; }
+.iv-popper { transform: none !important; opacity: 1 !important; animation: none !important; }
 .iv-jump .iv-bob { animation: iv-hop .55s ease-in-out 3 !important; }
-.iv-moving .iv-bot { filter: drop-shadow(0 0 14px rgba(255, 160, 70, .75)) brightness(1.08); }
+.iv-flying .iv-bot { filter: drop-shadow(0 0 14px rgba(255, 160, 70, .6)); }
 .iv-popper { width: 100%; height: 100%; }
 
 /* speech bubble that follows him */
@@ -356,6 +373,9 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 @keyframes iv-sweep { to { transform: translateX(120%); } }
 @keyframes iv-bubble-in { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes iv-tap-pulse { 50% { box-shadow: 0 0 0 8px rgba(232, 145, 63, .15); } }
+@keyframes iv-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes iv-flicker { from { transform: scaleY(.85) scaleX(1.05); } to { transform: scaleY(1.1) scaleX(.92); } }
+@keyframes iv-unplug { 0% { box-shadow: 0 0 0 0 rgba(255, 230, 170, 1); } 100% { box-shadow: 0 0 0 26px rgba(255, 200, 120, 0); } }
 @keyframes iv-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-26px) rotate(-4deg); } 70% { transform: translateY(0) scale(1.06, .94); } }
 @keyframes iv-breathe { 50% { transform: scale(1.04); } }
 @keyframes iv-ring-pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
