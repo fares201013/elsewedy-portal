@@ -96,45 +96,6 @@ export default function CopperCable() {
 
       ctx.clearRect(0, 0, w, h);
 
-      if (alpha > 0.01 && mouse.seen) {
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        const trace = (ox = 0, oy = 0) => {
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x + ox, pts[0].y + oy);
-          for (let i = 1; i < N - 1; i += 1) {
-            const mx = (pts[i].x + pts[i + 1].x) / 2; const my = (pts[i].y + pts[i + 1].y) / 2;
-            ctx.quadraticCurveTo(pts[i].x + ox, pts[i].y + oy, mx + ox, my + oy);
-          }
-          ctx.lineTo(pts[N - 1].x + ox, pts[N - 1].y + oy);
-        };
-        // soft shadow
-        trace(2, 5); ctx.strokeStyle = 'rgba(60, 25, 5, .18)'; ctx.lineWidth = 7; ctx.stroke();
-        // insulation edge
-        trace(); ctx.strokeStyle = '#6f2f0e'; ctx.lineWidth = 7; ctx.stroke();
-        // copper body
-        const g = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[N - 1].x, pts[N - 1].y);
-        g.addColorStop(0, '#e8913f'); g.addColorStop(0.5, '#c8641f'); g.addColorStop(1, '#a14d17');
-        trace(); ctx.strokeStyle = g; ctx.lineWidth = 4.6; ctx.stroke();
-        // shine
-        trace(-0.8, -1.1); ctx.strokeStyle = 'rgba(255, 226, 184, .85)'; ctx.lineWidth = 1.4; ctx.stroke();
-
-        // frayed copper strands at the free end
-        const a = pts[N - 2]; const b = pts[N - 1];
-        const ang = Math.atan2(b.y - a.y, b.x - a.x);
-        ctx.strokeStyle = '#f0a050'; ctx.lineWidth = 1.3;
-        [-0.5, 0, 0.5].forEach((off) => {
-          ctx.beginPath(); ctx.moveTo(b.x, b.y);
-          ctx.lineTo(b.x + Math.cos(ang + off) * 6, b.y + Math.sin(ang + off) * 6);
-          ctx.stroke();
-        });
-        // little glowing ring where the cable plugs into the cursor
-        ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffd08a'; ctx.shadowColor = 'rgba(255, 170, 80, .9)'; ctx.shadowBlur = 8; ctx.fill();
-        ctx.restore();
-      }
-
       // sparks
       for (let i = sparks.length - 1; i >= 0; i -= 1) {
         const s = sparks[i];
