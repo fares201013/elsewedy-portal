@@ -87,8 +87,9 @@ function speakOut(text, { onWord, onDone, clip }) {
   // a recorded voice line (public/assets/voice/volt-N.mp3) wins over the browser voice
   if (clip) {
     let tts = null;
-    const a = new Audio(clip);
+    const a = typeof clip === 'string' ? new Audio(clip) : clip;
     a.preload = 'auto';
+    try { a.pause(); a.currentTime = 0; a.muted = false; } catch { /* fresh element */ }
     a.onplaying = () => {
       if (started) return;
       started = true;
@@ -137,6 +138,14 @@ export default function Intro({ onExit, onDone }) {
   const rafRef = useRef(0);
   const flightOverride = useRef(false);
   const posRef = useRef({ x: window.innerWidth / 2, y: -400, rot: 0 });
+  // one audio element per line, created up front so a single tap can unlock them all (iPhone needs this)
+  const clipsRef = useRef(null);
+  if (!clipsRef.current) {
+    clipsRef.current = LINES.map((_, i) => {
+      try { const a = new Audio(`./assets/voice/volt-${i + 1}.mp3`); a.preload = 'auto'; a.setAttribute('playsinline', ''); return a; } catch { return null; }
+    });
+  }
+  const unlocked = useRef(false);
   const doneRef = useRef(false);
   const timers = useRef([]);
   const stopVoice = useRef(null);
@@ -280,7 +289,7 @@ export default function Intro({ onExit, onDone }) {
     const go = () => {
       setLine(i); setShown(0); setTalking(true);
       stopVoice.current = speakOut(L.text, {
-        clip: `./assets/voice/volt-${i + 1}.mp3`,
+        clip: clipsRef.current[i] || `./assets/voice/volt-${i + 1}.mp3`,
         onWord: (n) => setShown(n),
         onDone: () => { setTalking(false); after(() => say(i + 1), 800); },
       });
@@ -305,6 +314,20 @@ export default function Intro({ onExit, onDone }) {
     after(() => say(0), POP_MS + 350);
 
     const unlock = () => {
+      if (!unlocked.current) {
+        unlocked.current = true;
+        // play+pause every clip silently inside the tap so the browser lets us play them later
+        clipsRef.current.forEach((a) => {
+          if (!a || !a.paused) return;
+          a.muted = true;
+          const p = a.play();
+          if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; unlocked.current = false; /* try again on the next tap */ });
+        });
+        try {
+          const u = new window.SpeechSynthesisUtterance(' ');
+          u.volume = 0; window.speechSynthesis.speak(u);
+        } catch { /* no speech api */ }
+      }
       tryResume().then((ok) => {
         if (!ok) return;
         setNeedTap(false);
@@ -312,12 +335,16 @@ export default function Intro({ onExit, onDone }) {
     };
     const onKey = (e) => { if (e.key === 'Escape') finish(); else unlock(); };
     window.addEventListener('pointerdown', unlock);
+    window.addEventListener('touchend', unlock);
+    window.addEventListener('click', unlock);
     window.addEventListener('keydown', onKey);
     return () => {
       timers.current.forEach((t) => window.clearTimeout(t));
       cancelAnimationFrame(rafRef.current);
       stopVoice.current?.();
       window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchend', unlock);
+      window.removeEventListener('click', unlock);
       window.removeEventListener('keydown', onKey);
       document.documentElement.classList.remove('iv-lock');
     };
