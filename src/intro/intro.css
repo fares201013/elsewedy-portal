@@ -43,7 +43,6 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgba(232, 145, 63, .35), rgba(232, 145, 63, 0) 65%);
   filter: blur(10px); opacity: 0;
-  animation: iv-in .6s var(--ease) 2.9s forwards, iv-pulse 4s ease-in-out 3.5s infinite;
 }
 .iv-sparks i {
   position: absolute; bottom: -10px; left: var(--x);
@@ -66,7 +65,57 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   transition: transform 1.1s var(--ease);
 }
 .iv-live .iv-bot-wrap, .iv-exit .iv-bot-wrap { transform: none; }
-.iv-live .iv-glow { animation-play-state: running; }
+.iv-pop .iv-glow, .iv-live .iv-glow { animation: iv-in .6s var(--ease) forwards, iv-pulse 4s ease-in-out .6s infinite; }
+
+/* walking around while he talks */
+.iv-walker { transition: transform .95s cubic-bezier(.45, 0, .2, 1); }
+.iv-live.iv-spot-left .iv-walker { transform: translateX(-215px) rotate(-6deg); }
+.iv-live.iv-spot-right .iv-walker { transform: translateX(215px) rotate(6deg); }
+.iv-live.iv-jump .iv-walker { animation: iv-hop .55s ease-in-out 3; }
+
+/* ready screen: the power button */
+.iv-gate {
+  position: absolute; inset: 0; z-index: 4;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  animation: iv-in .8s var(--ease) both;
+}
+.iv-gate .iv-kicker { opacity: 1; transform: none; filter: none; }
+.iv-power {
+  position: relative; width: 148px; height: 148px; border-radius: 50%;
+  display: grid; place-items: center; align-content: center; gap: 6px;
+  border: 0; cursor: pointer; color: #fff8ee;
+  background: radial-gradient(circle at 35% 30%, #f6a55a, #c8641f 55%, #8a3d14);
+  box-shadow: 0 0 0 6px rgba(232, 145, 63, .18), 0 18px 40px -12px rgba(140, 60, 15, .7), inset 0 2px 8px rgba(255, 230, 200, .6);
+  transition: transform .25s cubic-bezier(.34, 1.56, .5, 1), box-shadow .25s;
+  animation: iv-breathe 2.2s ease-in-out infinite;
+}
+.iv-power:hover { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(232, 145, 63, .22), 0 24px 50px -12px rgba(140, 60, 15, .8), inset 0 2px 8px rgba(255, 230, 200, .6); }
+.iv-power:active { transform: scale(.95); }
+.iv-power:focus-visible { outline: 3px solid #e8913f; outline-offset: 6px; }
+.iv-power svg { width: 44px; height: 44px; fill: #fff3dc; filter: drop-shadow(0 0 8px rgba(255, 220, 160, .9)); }
+.iv-power-label { font: 600 13px 'JetBrains Mono Variable', ui-monospace, monospace; letter-spacing: .16em; text-transform: uppercase; }
+.iv-power-ring {
+  position: absolute; inset: -2px; border-radius: 50%; border: 2px solid rgba(232, 145, 63, .7);
+  animation: iv-ring-pulse 2.2s ease-out infinite; pointer-events: none;
+}
+.iv-power-ring2 { animation-delay: 1.1s; }
+.iv-hint { margin: 0; font-size: 14px; color: var(--muted); }
+
+/* live captions, word by word */
+.iv-caption {
+  margin: 10px auto 0; max-width: 36em; min-height: 3.1em;
+  font-size: clamp(16px, 2.4vh, 20px); line-height: 1.5; font-weight: 500;
+}
+.iv-caption span { color: var(--muted); opacity: .28; transition: opacity .25s, color .25s; }
+.iv-caption span.on { opacity: 1; color: var(--ink); }
+
+/* role cards appear when Volt gets to them */
+.iv-role { opacity: 0; transform: translateY(16px) scale(.97); transition: opacity .6s var(--ease), transform .6s var(--ease), box-shadow .4s, border-color .4s; }
+.iv-role.in { opacity: 1; transform: none; }
+.iv-role.active { border-color: var(--cu); box-shadow: 0 0 0 4px rgba(232, 145, 63, .16), 0 18px 40px -18px rgba(140, 60, 15, .6); transform: translateY(-4px); }
+.iv-role.active::after { animation: iv-sweep 1.4s var(--ease) .2s; }
+.iv-foot { opacity: 0 !important; transform: translateY(10px) !important; transition: opacity .6s var(--ease), transform .6s var(--ease) !important; }
+.iv-foot.in { opacity: 1 !important; transform: none !important; }
 .iv-bot { width: 100%; height: auto; display: block; overflow: visible; }
 .iv-live .iv-bot { animation: iv-float 4.2s ease-in-out infinite; }
 
@@ -156,9 +205,7 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 }
 .iv-live .iv-kicker { transition-delay: .15s; }
 .iv-live .iv-title { transition-delay: 0s; }
-.iv-live .iv-sub { transition-delay: 1.1s; }
-.iv-live .iv-roles { transition-delay: 1.6s; }
-.iv-live .iv-foot { transition-delay: 2.3s; }
+.iv-live .iv-caption { transition-delay: .3s; }
 
 .iv-kicker {
   margin: 0 0 6px;
@@ -201,8 +248,7 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   background: linear-gradient(110deg, transparent 35%, rgba(255, 225, 180, .45) 50%, transparent 65%);
   transform: translateX(-120%);
 }
-.iv-live .iv-role::after { animation: iv-sweep 1.4s var(--ease) 2.2s; }
-.iv-live .iv-role + .iv-role::after { animation-delay: 2.5s; }
+
 .iv-role-tag {
   display: inline-block; margin-bottom: 6px;
   font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
@@ -230,9 +276,9 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 .iv-skip circle { fill: none; stroke: var(--line); stroke-width: 3; }
 .iv-skip .iv-skip-ring {
   stroke: var(--cu); stroke-linecap: round;
-  stroke-dasharray: 1; stroke-dashoffset: 1;
+  stroke-dasharray: 1;
 }
-.iv-live .iv-skip-ring { animation: iv-ring var(--hold) linear forwards; }
+.iv-skip-ring { transition: stroke-dashoffset .6s var(--ease); }
 
 /* exit: the sketch un-draws, robot powers down, everything dissolves */
 .iv-exit { opacity: 0; visibility: hidden; clip-path: circle(0% at 50% 38%); pointer-events: none; }
@@ -264,7 +310,9 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 @keyframes iv-sheen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
 @keyframes iv-caret { 50% { opacity: 0; } }
 @keyframes iv-sweep { to { transform: translateX(120%); } }
-@keyframes iv-ring { to { stroke-dashoffset: 0; } }
+@keyframes iv-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-26px) rotate(-4deg); } 70% { transform: translateY(0) scale(1.06, .94); } }
+@keyframes iv-breathe { 50% { transform: scale(1.04); } }
+@keyframes iv-ring-pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
 @keyframes iv-rise {
   0% { transform: translateY(0); opacity: 0; }
   10% { opacity: .9; }
@@ -279,7 +327,9 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   .iv-skip { top: 14px; bottom: auto; right: 14px; padding: 6px 8px 6px 12px; font-size: 12px; }
   .iv-skip svg { width: 22px; height: 22px; }
   .iv-title { font-size: 44px; }
-  .iv-sub { font-size: 14.5px; }
+  .iv-caption { font-size: 15px; min-height: 4.6em; }
+  .iv-live.iv-spot-left .iv-walker { transform: translateX(-24vw) rotate(-6deg); }
+  .iv-live.iv-spot-right .iv-walker { transform: translateX(24vw) rotate(6deg); }
   .iv-kicker { font-size: 10px; }
   .iv-foot { font-size: 16px; }
 }
