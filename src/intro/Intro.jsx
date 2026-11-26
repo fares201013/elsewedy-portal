@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './intro.css';
-import { audio, tryResume, running, startMusic, stopMusic, duck, whoosh, thud, boom, zip, boing, babble } from './music.js';
+import { audio, tryResume, whoosh, thud, boom } from './music.js';
 
 /*
   Cinematic welcome — starts on its own, no button.
@@ -16,11 +16,11 @@ const LIVE_MS = 3600;
 const TEAM = 'Team Nexora';
 
 const LINES = [
-  { text: "Heyyy! Hi hi! I'm Volt! ⚡", spot: 'mid' },
-  { text: `Welcome to the Procurement & Supplier Portal, made by ${TEAM} for Elsewedy Electric!`, spot: 'right' },
-  { text: 'You work at Elsewedy? Make a request, get it approved, and compare offers. Easy peasy!', spot: 'left', card: 0 },
-  { text: 'You’re a supplier? Grab open requests, send your best price, and follow your order to the door!', spot: 'right', card: 1 },
-  { text: "Less paperwork, more power. Let's gooo! 🚀", spot: 'mid', jump: true },
+  { text: "Hey hey! I'm Volt! ⚡", spot: 'mid' },
+  { text: `Welcome to the Procurement and Supplier Portal, made by ${TEAM}, for Elsewedy Electric!`, spot: 'right' },
+  { text: 'Work at Elsewedy? Make a request, get it approved, and compare offers. Super easy!', spot: 'left', card: 0 },
+  { text: 'Are you a supplier? Find open requests, send your best price, and track your order, all the way to the door!', spot: 'right', card: 1 },
+  { text: "Less paperwork, more power. Let's go! 🚀", spot: 'mid', jump: true },
 ];
 
 const CABLES = [
@@ -59,6 +59,46 @@ const STROKES = [
 ];
 
 const rand = (a, b) => a + Math.random() * (b - a);
+
+// friendliest voice the device has (Edge's "Natural" voices sound the most human)
+function pickVoice() {
+  const vs = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+  const prefs = [/Ava.*Natural/i, /Emma.*Natural/i, /Jenny.*Natural/i, /Aria.*Natural/i, /Natural.*English \(United States\)/i, /Google US English/i, /Samantha/i, /Microsoft Zira/i];
+  for (const re of prefs) {
+    const v = vs.find((x) => re.test(x.name));
+    if (v) return v;
+  }
+  return vs.find((x) => /^en[-_]US/i.test(x.lang)) || vs.find((x) => /^en/i.test(x.lang)) || null;
+}
+
+// says text out loud while captions follow; captions only if the browser blocks speech
+function speakOut(text, { onWord, onDone }) {
+  const words = text.split(' ');
+  let n = 0; let wt = 0; let st = 0; let dead = false; let finished = false; let started = false; let voiced = false;
+  const reveal = (ms) => {
+    window.clearInterval(wt);
+    wt = window.setInterval(() => { n += 1; onWord(n); if (n >= words.length) window.clearInterval(wt); }, ms);
+  };
+  const done = () => {
+    if (finished || dead) return;
+    finished = true; window.clearInterval(wt); onWord(words.length); onDone();
+  };
+  const silent = () => { if (started || dead) return; started = true; reveal(300); st = window.setTimeout(() => { if (!voiced) done(); }, words.length * 300 + 900); };
+  const synth = window.speechSynthesis;
+  if (!synth || typeof window.SpeechSynthesisUtterance === 'undefined') { silent(); return () => { dead = true; }; }
+  const u = new window.SpeechSynthesisUtterance(text.replace(/[^\p{L}\p{N}\s.,!?'’-]/gu, ''));
+  const v = pickVoice();
+  if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+  u.rate = 1.05; u.pitch = 1.15; u.volume = 1;
+  u.onstart = () => { voiced = true; window.clearTimeout(st); if (!started) { started = true; reveal(310); } };
+  u.onend = () => { if (voiced) done(); else silent(); };
+  u.onerror = () => { if (voiced) done(); else silent(); };
+  const safety = window.setTimeout(done, words.length * 480 + 3500);
+  const kick = window.setTimeout(silent, 2000);
+  try { synth.cancel(); synth.speak(u); } catch { silent(); }
+  return () => { dead = true; window.clearInterval(wt); window.clearTimeout(st); window.clearTimeout(safety); window.clearTimeout(kick); try { synth.cancel(); } catch { /* ignore */ } };
+}
+
 
 export default function Intro({ onExit, onDone }) {
   const [phase, setPhase] = useState('cables'); // cables -> pop -> live -> exit
@@ -102,13 +142,11 @@ export default function Intro({ onExit, onDone }) {
       if (n >= hops) {
         const s = spotXY(spot);
         setPos({ x: s.x, y: s.y, rot: 0, sx: 1, sy: 1, dur: 520 });
-        boing();
         after(() => { setPos((p) => ({ ...p, sx: 1.12, sy: 0.88, dur: 120 })); }, 520);
         after(() => { setPos((p) => ({ ...p, sx: 1, sy: 1, dur: 260 })); setLanded(true); cb?.(); }, 650);
         return;
       }
       n += 1;
-      zip();
       const d = rand(260, 400);
       setPos({ x: rand(0.08, 0.92) * vw, y: rand(0.12, 0.86) * vh, rot: rand(-28, 28), sx: rand(0.9, 1.1), sy: rand(0.9, 1.1), dur: d });
       after(hop, d + 40);
@@ -120,7 +158,6 @@ export default function Intro({ onExit, onDone }) {
     if (doneRef.current) return;
     doneRef.current = true;
     stopVoice.current?.();
-    stopMusic(0.9);
     setTalking(false);
     setPhase('exit');
     onExit?.();
@@ -136,17 +173,11 @@ export default function Intro({ onExit, onDone }) {
     }
     const L = LINES[i];
     const go = () => {
-      setLine(i); setShown(0); setTalking(true); duck(true);
-      const words = L.text.split(' ').length;
-      let finished = false;
-      const done = () => {
-        if (finished) return;
-        finished = true;
-        setShown(words); setTalking(false); duck(false);
-        after(() => say(i + 1), 900);
-      };
-      stopVoice.current = babble(L.text, { onWord: (n) => setShown(n), onDone: done });
-      after(done, L.text.length * 75 + 2500); // never get stuck
+      setLine(i); setShown(0); setTalking(true);
+      stopVoice.current = speakOut(L.text, {
+        onWord: (n) => setShown(n),
+        onDone: () => { setTalking(false); after(() => say(i + 1), 800); },
+      });
     };
     if (i === 0) {
       const s = spotXY(L.spot);
@@ -159,11 +190,12 @@ export default function Intro({ onExit, onDone }) {
   useEffect(() => {
     document.documentElement.classList.add('iv-lock');
     audio();
+    try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* warm up */ }
     tryResume().then((ok) => { if (!ok && !doneRef.current) setNeedTap(true); });
 
     [0, 1, 2, 3].forEach((c) => after(() => whoosh(c % 2 === 0), 250 + c * 420));
     [2050, 2350, 2650].forEach((t, k) => after(() => thud(0.9 + k * 0.12), t));
-    after(() => { boom(); startMusic(); }, POP_MS);
+    after(() => boom(), POP_MS);
     after(() => setPhase('pop'), POP_MS);
     after(() => setPhase('live'), LIVE_MS);
     after(() => say(0), LIVE_MS + 200);
@@ -172,7 +204,6 @@ export default function Intro({ onExit, onDone }) {
       tryResume().then((ok) => {
         if (!ok) return;
         setNeedTap(false);
-        if (phaseRef.current !== 'cables') startMusic();
       });
     };
     const onKey = (e) => { if (e.key === 'Escape') finish(); else unlock(); };
@@ -181,7 +212,6 @@ export default function Intro({ onExit, onDone }) {
     return () => {
       timers.current.forEach((t) => window.clearTimeout(t));
       stopVoice.current?.();
-      stopMusic(0.3);
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', onKey);
       document.documentElement.classList.remove('iv-lock');
@@ -333,7 +363,7 @@ export default function Intro({ onExit, onDone }) {
       </div>
 
       {needTap && phase !== 'exit' && (
-        <button type="button" className="iv-tap" onClick={() => tryResume().then((ok) => { if (ok) { setNeedTap(false); if (phaseRef.current !== 'cables') startMusic(); } })}>
+        <button type="button" className="iv-tap" onClick={() => tryResume().then((ok) => { if (ok) setNeedTap(false); })}>
           <span aria-hidden="true">🔊</span> Tap anywhere for sound
         </button>
       )}
