@@ -93,10 +93,11 @@ export default function Landing({ requests = [], quotations = [], orders = [], o
 
   // preloader "charging" counter
   useEffect(() => {
-    if (reduced) {
+    if (reduced || window.__voltIntroPlayed) {
+      // Volt's intro already did the loading show; reveal the hero right away
       setCharge(100);
-      setLoaded(true);
-      return undefined;
+      const id = window.setTimeout(() => setLoaded(true), 60);
+      return () => window.clearTimeout(id);
     }
     const start = performance.now();
     let raf = 0;
