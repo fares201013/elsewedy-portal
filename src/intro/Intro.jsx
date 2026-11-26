@@ -1,39 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './intro.css';
-import { unlockAudio, whoosh, thud, boom, blip } from './sfx.js';
+import { audio, tryResume, running, startMusic, stopMusic, duck, whoosh, thud, boom, zip, boing, babble } from './music.js';
 
 /*
-  Cinematic welcome.
-  1. "Power up" button (browsers only allow sound after a click).
-  2. Copper cables whoosh in from right and left, three power hits, flash.
-  3. Volt bursts out, then actually talks (speech synthesis), moving around
-     the screen to point at what he is explaining, with live captions.
-  4. When he is done he dissolves and the site appears.
+  Cinematic welcome — starts on its own, no button.
+  Cables whoosh in, three power hits, boom: Volt pops out, the music drops,
+  and he zips all over the screen. Every time he has something to say he
+  lands somewhere, chats in his cute robot voice with a speech bubble,
+  then zooms off again. When he is done he dissolves and the site appears.
+  (Browsers keep sound muted until the first tap/key, so a tiny chip asks for it.)
 */
 
 const POP_MS = 2950;
-const LIVE_MS = 3800;
-const TEAM = 'Team Live Wire';
+const LIVE_MS = 3600;
+const TEAM = 'Team Nexora';
 
 const LINES = [
-  { text: "Hi there! I'm Volt, and I'm so happy you're here!", spot: 'center' },
-  { text: `Welcome to the Procurement and Supplier Portal, built for Elsewedy Electric by ${TEAM}!`, spot: 'center' },
-  { text: "Employees, this one's for you! Create purchase requests, get them approved, and compare supplier offers in just a few clicks.", spot: 'left' },
-  { text: "Suppliers, you're up next! Find open requests, send your quotations, and track every order all the way to delivery.", spot: 'right' },
-  { text: "Less paperwork, more power. Let's plug in and get started!", spot: 'center', jump: true },
+  { text: "Heyyy! Hi hi! I'm Volt! ⚡", spot: 'mid' },
+  { text: `Welcome to the Procurement & Supplier Portal, made by ${TEAM} for Elsewedy Electric!`, spot: 'right' },
+  { text: 'You work at Elsewedy? Make a request, get it approved, and compare offers. Easy peasy!', spot: 'left', card: 0 },
+  { text: 'You’re a supplier? Grab open requests, send your best price, and follow your order to the door!', spot: 'right', card: 1 },
+  { text: "Less paperwork, more power. Let's gooo! 🚀", spot: 'mid', jump: true },
 ];
-
-const HEADLINE = "Hi, I'm Volt.";
-
-function pickVoice() {
-  const vs = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
-  const prefs = [/Google US English/i, /(Aria|Jenny|Ava|Emma|Ana).*Online/i, /Samantha/i, /Microsoft Zira/i, /Google UK English Female/i];
-  for (const re of prefs) {
-    const v = vs.find((x) => re.test(x.name));
-    if (v) return v;
-  }
-  return vs.find((x) => /^en[-_]US/i.test(x.lang)) || vs.find((x) => /^en/i.test(x.lang)) || null;
-}
 
 const CABLES = [
   'M1720 150 C1380 110 1140 430 800 450',
@@ -70,141 +58,151 @@ const STROKES = [
   { d: 'M124 304 V322 H148 V304 M172 304 V322 H196 V304', w: 3 },
 ];
 
+const rand = (a, b) => a + Math.random() * (b - a);
+
 export default function Intro({ onExit, onDone }) {
-  const [phase, setPhase] = useState('ready'); // ready -> cables -> pop -> live -> exit
-  const [typed, setTyped] = useState('');
+  const [phase, setPhase] = useState('cables'); // cables -> pop -> live -> exit
   const [line, setLine] = useState(-1);
   const [shown, setShown] = useState(0);
   const [talking, setTalking] = useState(false);
+  const [landed, setLanded] = useState(false);
+  const [needTap, setNeedTap] = useState(false);
+  const [pos, setPos] = useState(() => ({ x: window.innerWidth / 2, y: window.innerHeight / 2, rot: 0, sx: 1, sy: 1, dur: 0 }));
   const doneRef = useRef(false);
-  const token = useRef(0);
-  const wordTimer = useRef(0);
   const timers = useRef([]);
+  const stopVoice = useRef(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   const theme = (() => {
     try { return localStorage.getItem('volt-theme') || 'light'; } catch { return 'light'; }
   })();
 
-  const after = (fn, ms) => { const id = window.setTimeout(fn, ms); timers.current.push(id); return id; };
+  const after = (fn, ms) => { const id = window.setTimeout(() => { if (!doneRef.current) fn(); }, ms); timers.current.push(id); return id; };
+
+  const size = () => {
+    const vw = window.innerWidth; const vh = window.innerHeight;
+    return { vw, vh, mobile: vw < 700 };
+  };
+
+  // where Volt stands while talking (always in the upper band, clear of the text)
+  const spotXY = (spot) => {
+    const { vw, vh, mobile } = size();
+    const y = mobile ? vh * 0.17 : vh * 0.26;
+    if (mobile) return { x: spot === 'left' ? vw * 0.27 : spot === 'right' ? vw * 0.73 : vw * 0.5, y };
+    return { x: spot === 'left' ? vw * 0.2 : spot === 'right' ? vw * 0.8 : vw * 0.5, y: spot === 'mid' ? vh * 0.22 : y };
+  };
+
+  // zip around the whole screen a few times, then land on a spot
+  const roam = useCallback((hops, spot, cb) => {
+    setLanded(false);
+    let n = 0;
+    const hop = () => {
+      if (doneRef.current) return;
+      const { vw, vh } = size();
+      if (n >= hops) {
+        const s = spotXY(spot);
+        setPos({ x: s.x, y: s.y, rot: 0, sx: 1, sy: 1, dur: 520 });
+        boing();
+        after(() => { setPos((p) => ({ ...p, sx: 1.12, sy: 0.88, dur: 120 })); }, 520);
+        after(() => { setPos((p) => ({ ...p, sx: 1, sy: 1, dur: 260 })); setLanded(true); cb?.(); }, 650);
+        return;
+      }
+      n += 1;
+      zip();
+      const d = rand(260, 400);
+      setPos({ x: rand(0.08, 0.92) * vw, y: rand(0.12, 0.86) * vh, rot: rand(-28, 28), sx: rand(0.9, 1.1), sy: rand(0.9, 1.1), dur: d });
+      after(hop, d + 40);
+    };
+    hop();
+  }, []);
 
   const finish = useCallback(() => {
     if (doneRef.current) return;
     doneRef.current = true;
-    token.current += 1;
-    window.clearInterval(wordTimer.current);
-    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch { /* ignore */ }
+    stopVoice.current?.();
+    stopMusic(0.9);
     setTalking(false);
     setPhase('exit');
     onExit?.();
     window.setTimeout(() => onDone?.(), 1300);
   }, [onExit, onDone]);
 
-  // Volt reads line i out loud, then moves on to the next one
-  const speak = useCallback((i) => {
+  const say = useCallback((i) => {
     if (doneRef.current) return;
-    if (i >= LINES.length) { after(finish, 1600); return; }
-    const my = ++token.current;
-    const { text } = LINES[i];
-    const words = text.split(' ');
-    setLine(i); setShown(0); blip();
-    let moved = false;
-    const next = () => {
-      if (moved || my !== token.current) return;
-      moved = true;
-      window.clearInterval(wordTimer.current);
-      setShown(words.length); setTalking(false);
-      after(() => speak(i + 1), 550);
-    };
-    const revealWords = (msPerWord) => {
-      window.clearInterval(wordTimer.current);
-      let n = 0;
-      wordTimer.current = window.setInterval(() => {
-        n += 1; setShown(n);
-        if (n >= words.length) window.clearInterval(wordTimer.current);
-      }, msPerWord);
-    };
-    const synth = window.speechSynthesis;
-    if (!synth || typeof window.SpeechSynthesisUtterance === 'undefined') {
-      setTalking(true); revealWords(300);
-      after(next, words.length * 300 + 900);
+    if (i >= LINES.length) {
+      // victory lap, then vanish
+      roam(4, 'mid', () => after(finish, 500));
       return;
     }
-    const u = new window.SpeechSynthesisUtterance(text);
-    const v = pickVoice();
-    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
-    u.rate = 1.03; u.pitch = 1.25; u.volume = 1;
-    let started = false;
-    let timed = false;
-    const goTimed = () => {
-      // no voice available / blocked: Volt "talks" with captions only
-      if (timed || started || moved || my !== token.current) return;
-      timed = true;
-      setTalking(true); revealWords(300);
-      after(next, words.length * 300 + 1100);
+    const L = LINES[i];
+    const go = () => {
+      setLine(i); setShown(0); setTalking(true); duck(true);
+      const words = L.text.split(' ').length;
+      let finished = false;
+      const done = () => {
+        if (finished) return;
+        finished = true;
+        setShown(words); setTalking(false); duck(false);
+        after(() => say(i + 1), 900);
+      };
+      stopVoice.current = babble(L.text, { onWord: (n) => setShown(n), onDone: done });
+      after(done, L.text.length * 75 + 2500); // never get stuck
     };
-    u.onstart = () => { if (my === token.current) { started = true; setTalking(true); revealWords(330); } };
-    u.onend = () => { if (started) next(); else goTimed(); };
-    u.onerror = () => { if (started) next(); else goTimed(); };
-    // safety net: some browsers never fire onend
-    after(() => { if (started) next(); }, words.length * 450 + 3000);
-    // if speech never starts, still show the words
-    after(goTimed, 1200);
-    try { synth.cancel(); synth.speak(u); } catch { next(); }
-  }, [finish]);
+    if (i === 0) {
+      const s = spotXY(L.spot);
+      setPos({ x: s.x, y: s.y, rot: 0, sx: 1, sy: 1, dur: 700 });
+      after(() => { setLanded(true); go(); }, 760);
+    } else roam(Math.round(rand(3, 5)), L.spot, go);
+  }, [roam, finish]);
 
-  const start = useCallback(() => {
-    if (phase !== 'ready') return;
-    unlockAudio();
-    // warm up the voices list
-    try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* ignore */ }
-    setPhase('cables');
-    [0, 1, 2, 3].forEach((c) => whoosh(0.25 + c * 0.42, c % 2 === 0));
-    [2.05, 2.35, 2.65].forEach((t, k) => thud(t, 0.9 + k * 0.12));
-    boom(2.95);
-    after(() => setPhase((p) => (p === 'exit' ? p : 'pop')), POP_MS);
-    after(() => setPhase((p) => (p === 'exit' ? p : 'live')), LIVE_MS);
-    after(() => speak(0), LIVE_MS + 300);
-  }, [phase, speak]);
-
+  // the whole show runs on its own
   useEffect(() => {
     document.documentElement.classList.add('iv-lock');
-    try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* ignore */ }
+    audio();
+    tryResume().then((ok) => { if (!ok && !doneRef.current) setNeedTap(true); });
+
+    [0, 1, 2, 3].forEach((c) => after(() => whoosh(c % 2 === 0), 250 + c * 420));
+    [2050, 2350, 2650].forEach((t, k) => after(() => thud(0.9 + k * 0.12), t));
+    after(() => { boom(); startMusic(); }, POP_MS);
+    after(() => setPhase('pop'), POP_MS);
+    after(() => setPhase('live'), LIVE_MS);
+    after(() => say(0), LIVE_MS + 200);
+
+    const unlock = () => {
+      tryResume().then((ok) => {
+        if (!ok) return;
+        setNeedTap(false);
+        if (phaseRef.current !== 'cables') startMusic();
+      });
+    };
+    const onKey = (e) => { if (e.key === 'Escape') finish(); else unlock(); };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', onKey);
     return () => {
       timers.current.forEach((t) => window.clearTimeout(t));
-      window.clearInterval(wordTimer.current);
-      try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch { /* ignore */ }
+      stopVoice.current?.();
+      stopMusic(0.3);
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', onKey);
       document.documentElement.classList.remove('iv-lock');
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') finish();
-      else if ((e.key === 'Enter' || e.key === ' ') && phase === 'ready') { e.preventDefault(); start(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [phase, start, finish]);
-
-  // typewriter for the headline once he is up
-  useEffect(() => {
-    if (phase !== 'live') return undefined;
-    let i = 0;
-    const id = window.setInterval(() => {
-      i += 1;
-      setTyped(HEADLINE.slice(0, i));
-      if (i >= HEADLINE.length) window.clearInterval(id);
-    }, 70);
-    return () => window.clearInterval(id);
-  }, [phase]);
-
   const cur = line >= 0 ? LINES[line] : null;
-  const spot = cur ? cur.spot : 'center';
   const words = cur ? cur.text.split(' ') : [];
   const progress = line < 0 ? 0 : (line + (shown >= words.length ? 1 : 0.5)) / LINES.length;
+  const { vw, mobile } = size();
+  const bubbleLeft = pos.x > vw * 0.55; // bubble goes on the side facing the middle
+  const showBubble = !mobile && landed && cur && phase === 'live';
+
+  const caption = (
+    words.map((w, k) => <span key={`${line}-${k}`} className={k < shown ? 'on' : ''}>{w} </span>)
+  );
 
   return (
     <div
-      className={`iv iv-${phase} iv-spot-${spot} ${cur?.jump ? 'iv-jump' : ''} ${theme === 'dark' ? 'iv-dark' : ''} ${talking ? 'iv-talking' : ''}`}
+      className={`iv iv-${phase} ${cur?.jump && landed ? 'iv-jump' : ''} ${theme === 'dark' ? 'iv-dark' : ''} ${talking ? 'iv-talking' : ''} ${landed ? 'iv-landed' : 'iv-moving'}`}
       role="dialog"
       aria-label="Welcome"
     >
@@ -216,45 +214,48 @@ export default function Intro({ onExit, onDone }) {
         ))}
       </div>
 
-      {phase === 'ready' && (
-        <div className="iv-gate">
-          <p className="iv-kicker">{TEAM} · for Elsewedy Electric</p>
-          <button type="button" className="iv-power" onClick={start} autoFocus>
-            <span className="iv-power-ring" aria-hidden="true" />
-            <span className="iv-power-ring iv-power-ring2" aria-hidden="true" />
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2L13.5 2Z" /></svg>
-            <span className="iv-power-label">Power up</span>
-          </button>
-          <p className="iv-hint">🔊 Turn your sound on</p>
-        </div>
-      )}
-
-      {phase !== 'ready' && (
-        <>
-          <svg className="iv-cables" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <defs>
-              <filter id="ivCableGlow" x="-10%" y="-10%" width="120%" height="120%">
-                <feGaussianBlur stdDeviation="6" result="b" />
-                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-            </defs>
-            {CABLES.map((d, i) => (
-              <g key={i} className="iv-cable" style={{ '--c': i }} filter="url(#ivCableGlow)">
-                <path d={d} pathLength="1" className="iv-cable-body" />
-                <path d={d} pathLength="1" className="iv-cable-core" />
-                <path d={d} pathLength="1" className="iv-cable-comet" />
-              </g>
-            ))}
-          </svg>
-          <div className="iv-core" aria-hidden="true" />
-          <div className="iv-beats" aria-hidden="true"><i /><i /><i /></div>
-          <div className="iv-flash" aria-hidden="true" />
-        </>
-      )}
+      <svg className="iv-cables" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <filter id="ivCableGlow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="6" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        {CABLES.map((d, i) => (
+          <g key={i} className="iv-cable" style={{ '--c': i }} filter="url(#ivCableGlow)">
+            <path d={d} pathLength="1" className="iv-cable-body" />
+            <path d={d} pathLength="1" className="iv-cable-core" />
+            <path d={d} pathLength="1" className="iv-cable-comet" />
+          </g>
+        ))}
+      </svg>
+      <div className="iv-core" aria-hidden="true" />
+      <div className="iv-beats" aria-hidden="true"><i /><i /><i /></div>
+      <div className="iv-flash" aria-hidden="true" />
 
       <div className="iv-stage">
-        <div className="iv-bot-wrap">
-          <div className="iv-walker">
+        <div className="iv-copy">
+          <p className="iv-kicker">{TEAM} presents</p>
+          <h1 className="iv-title"><span className="iv-shine">Procurement &amp; Supplier Portal</span></h1>
+          <p className="iv-sub2">for Elsewedy Electric</p>
+          {mobile && <p className="iv-caption" aria-live="polite">{caption}</p>}
+          <div className="iv-roles">
+            <article className={`iv-role ${line >= 2 ? 'in' : ''} ${cur?.card === 0 ? 'active' : ''}`}>
+              <span className="iv-role-tag">For employees</span>
+              <p>Create purchase requests, get approvals and compare supplier offers in a few clicks.</p>
+            </article>
+            <article className={`iv-role ${line >= 3 ? 'in' : ''} ${cur?.card === 1 ? 'active' : ''}`}>
+              <span className="iv-role-tag">For suppliers</span>
+              <p>Find open requests, send quotations and track every order to delivery.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      {/* Volt himself, free to run anywhere */}
+      <div className="iv-robo" style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, transitionDuration: `${pos.dur}ms` }}>
+        <div className="iv-robo-tilt" style={{ transform: `rotate(${pos.rot}deg) scale(${pos.sx}, ${pos.sy})`, transitionDuration: `${pos.dur}ms` }}>
+          <div className="iv-bob">
             <div className="iv-popper">
           <svg className="iv-bot" viewBox="0 0 320 370" aria-hidden="true">
             <defs>
@@ -326,34 +327,16 @@ export default function Intro({ onExit, onDone }) {
             </div>
           </div>
         </div>
-
-        <div className="iv-copy">
-          <p className="iv-kicker">{TEAM} · Procurement &amp; Supplier Portal</p>
-          <h1 className="iv-title">
-            <span className="iv-shine">{typed}</span>
-            <span className="iv-caret" aria-hidden="true" />
-          </h1>
-
-          <p className="iv-caption" aria-live="polite">
-            {words.map((w, k) => (
-              <span key={`${line}-${k}`} className={k < shown ? 'on' : ''}>{w} </span>
-            ))}
-          </p>
-
-          <div className="iv-roles">
-            <article className={`iv-role ${line >= 2 ? 'in' : ''} ${line === 2 ? 'active' : ''}`}>
-              <span className="iv-role-tag">For employees</span>
-              <p>Create purchase requests, get approvals and compare supplier offers in a few clicks.</p>
-            </article>
-            <article className={`iv-role ${line >= 3 ? 'in' : ''} ${line === 3 ? 'active' : ''}`}>
-              <span className="iv-role-tag">For suppliers</span>
-              <p>Find open requests, send quotations and track every order to delivery.</p>
-            </article>
-          </div>
-
-          <p className={`iv-foot ${line >= 4 ? 'in' : ''}`}>Less paperwork, more power. ⚡</p>
-        </div>
+        {showBubble && (
+          <div className={`iv-bubble ${bubbleLeft ? 'to-left' : 'to-right'}`} key={line} aria-live="polite">{caption}</div>
+        )}
       </div>
+
+      {needTap && phase !== 'exit' && (
+        <button type="button" className="iv-tap" onClick={() => tryResume().then((ok) => { if (ok) { setNeedTap(false); if (phaseRef.current !== 'cables') startMusic(); } })}>
+          <span aria-hidden="true">🔊</span> Tap anywhere for sound
+        </button>
+      )}
 
       <button type="button" className="iv-skip" onClick={finish}>
         Skip intro
