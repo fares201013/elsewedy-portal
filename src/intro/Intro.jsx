@@ -9,11 +9,21 @@ import './intro.css';
   Plays on every full page load.
 */
 
-const HOLD_MS = 14500; // draw (~3.5s) + ~10s of reading + breathing room
+const POP_MS = 2950;  // cables have slammed in and the beats are done
+const LIVE_MS = 3800; // robot is up, the greeting starts
+const HOLD_MS = 14300; // ~10s of reading after the greeting
 const EXIT_MS = 1300;
 
 const HEADLINE = "Hi, I'm Volt.";
 const SUB = 'Welcome to the Elsewedy Electric Procurement & Supplier Portal.';
+
+// cables: right, left, right, left — all aimed at the centre (800,450)
+const CABLES = [
+  'M1720 150 C1380 110 1140 430 800 450',
+  'M-120 770 C240 820 470 470 800 450',
+  'M1720 760 C1380 800 1100 500 800 450',
+  'M-120 120 C300 90 520 420 800 450',
+];
 
 // every stroke of the robot, drawn in this order
 const STROKES = [
@@ -44,7 +54,7 @@ const STROKES = [
 ];
 
 export default function Intro({ onExit, onDone }) {
-  const [phase, setPhase] = useState('draw'); // draw -> live -> exit
+  const [phase, setPhase] = useState('cables'); // cables -> pop -> live -> exit
   const [typed, setTyped] = useState('');
   const doneRef = useRef(false);
   const theme = (() => {
@@ -61,11 +71,13 @@ export default function Intro({ onExit, onDone }) {
 
   useEffect(() => {
     document.documentElement.classList.add('iv-lock');
-    const t1 = window.setTimeout(() => setPhase('live'), 3300);
+    const t0 = window.setTimeout(() => setPhase((p) => (p === 'exit' ? p : 'pop')), POP_MS);
+    const t1 = window.setTimeout(() => setPhase((p) => (p === 'exit' ? p : 'live')), LIVE_MS);
     const t2 = window.setTimeout(finish, HOLD_MS);
     const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') finish(); };
     window.addEventListener('keydown', onKey);
     return () => {
+      window.clearTimeout(t0);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.removeEventListener('keydown', onKey);
@@ -93,7 +105,7 @@ export default function Intro({ onExit, onDone }) {
       className={`iv iv-${phase} ${theme === 'dark' ? 'iv-dark' : ''} ${talking ? 'iv-talking' : ''}`}
       role="dialog"
       aria-label="Welcome"
-      style={{ '--hold': `${HOLD_MS - 3300}ms` }}
+      style={{ '--hold': `${HOLD_MS - LIVE_MS}ms` }}
     >
       <div className="iv-grid" aria-hidden="true" />
       <div className="iv-glow" aria-hidden="true" />
@@ -103,8 +115,29 @@ export default function Intro({ onExit, onDone }) {
         ))}
       </div>
 
+      {/* power cables whoosh in from both sides and slam into the centre */}
+      <svg className="iv-cables" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <filter id="ivCableGlow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="6" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        {CABLES.map((d, i) => (
+          <g key={i} className="iv-cable" style={{ '--c': i }} filter="url(#ivCableGlow)">
+            <path d={d} pathLength="1" className="iv-cable-body" />
+            <path d={d} pathLength="1" className="iv-cable-core" />
+            <path d={d} pathLength="1" className="iv-cable-comet" />
+          </g>
+        ))}
+      </svg>
+      <div className="iv-core" aria-hidden="true" />
+      <div className="iv-beats" aria-hidden="true"><i /><i /><i /></div>
+      <div className="iv-flash" aria-hidden="true" />
+
       <div className="iv-stage">
         <div className="iv-bot-wrap">
+          <div className="iv-popper">
           <svg className="iv-bot" viewBox="0 0 320 370" aria-hidden="true">
             <defs>
               <linearGradient id="ivShine" x1="0" y1="0" x2="320" y2="0" gradientUnits="userSpaceOnUse">
@@ -172,7 +205,7 @@ export default function Intro({ onExit, onDone }) {
               </g>
             </g>
           </svg>
-          <div className="iv-scan" aria-hidden="true" />
+          </div>
         </div>
 
         <div className="iv-copy">

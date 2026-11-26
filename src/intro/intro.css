@@ -43,7 +43,7 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgba(232, 145, 63, .35), rgba(232, 145, 63, 0) 65%);
   filter: blur(10px); opacity: 0;
-  animation: iv-in 1.6s var(--ease) 1.2s forwards, iv-pulse 4s ease-in-out 2.8s infinite;
+  animation: iv-in .6s var(--ease) 2.9s forwards, iv-pulse 4s ease-in-out 3.5s infinite;
 }
 .iv-sparks i {
   position: absolute; bottom: -10px; left: var(--x);
@@ -62,10 +62,11 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 }
 .iv-bot-wrap {
   position: relative; width: clamp(150px, 24vh, 230px);
-  transform: translateY(22vh) scale(1.35);
-  transition: transform 1.2s var(--ease);
+  transform: translateY(var(--drop, 17vh)) scale(1.35);
+  transition: transform 1.1s var(--ease);
 }
 .iv-live .iv-bot-wrap, .iv-exit .iv-bot-wrap { transform: none; }
+.iv-live .iv-glow { animation-play-state: running; }
 .iv-bot { width: 100%; height: auto; display: block; overflow: visible; }
 .iv-live .iv-bot { animation: iv-float 4.2s ease-in-out infinite; }
 
@@ -74,13 +75,57 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   fill: none; stroke: url(#ivShine);
   stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 1; stroke-dashoffset: 1;
-  animation: iv-draw .75s var(--ease) calc(.35s + var(--n) * .17s) forwards;
 }
-.iv-lines .iv-bolt { animation: iv-draw .75s var(--ease) calc(.35s + var(--n) * .17s) forwards, iv-zap 1.8s ease-in-out 3.4s infinite; }
-.iv-lines .iv-bulb { animation: iv-draw .75s var(--ease) calc(.35s + var(--n) * .17s) forwards, iv-blink-bulb 1.4s steps(1) 3.4s infinite; }
+.iv-pop .iv-lines path, .iv-live .iv-lines path { animation: iv-draw .45s var(--ease) calc(var(--n) * .035s) forwards; }
+.iv-live .iv-lines .iv-bolt { animation: iv-draw .45s var(--ease) calc(var(--n) * .035s) forwards, iv-zap 1.8s ease-in-out .4s infinite; }
+.iv-live .iv-lines .iv-bulb { animation: iv-draw .45s var(--ease) calc(var(--n) * .035s) forwards, iv-blink-bulb 1.4s steps(1) .4s infinite; }
 
-.iv-fill { opacity: 0; animation: iv-in .9s var(--ease) 2.9s forwards; }
-.iv-face { opacity: 0; animation: iv-in .5s var(--ease) 3.2s forwards; }
+.iv-fill, .iv-face { opacity: 0; }
+.iv-pop .iv-fill, .iv-live .iv-fill { animation: iv-in .5s var(--ease) .35s forwards; }
+.iv-pop .iv-face, .iv-live .iv-face { animation: iv-in .4s var(--ease) .6s forwards; }
+
+/* robot bursts out of the centre */
+.iv-popper { transform: scale(0) rotate(-12deg); opacity: 0; }
+.iv-pop .iv-popper, .iv-live .iv-popper, .iv-exit .iv-popper { animation: iv-popin .75s cubic-bezier(.34, 1.7, .5, 1) forwards; }
+
+/* cables */
+.iv-cables { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.iv-cable path { fill: none; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.iv-cable-body { stroke: #c8641f; stroke-width: 12; }
+.iv-cable-core { stroke: #ffe2b8; stroke-width: 3; }
+.iv-cable-comet { stroke: #fff; stroke-width: 7; stroke-dasharray: .07 2 !important; stroke-dashoffset: .07 !important; }
+.iv-dark .iv-cable-body { stroke: #e07a2c; }
+.iv-cable .iv-cable-body, .iv-cable .iv-cable-core {
+  animation: iv-whoosh .48s cubic-bezier(.6, 0, .2, 1) calc(.25s + var(--c) * .42s) forwards;
+}
+.iv-cable .iv-cable-comet { animation: iv-comet .48s cubic-bezier(.6, 0, .2, 1) calc(.25s + var(--c) * .42s) forwards; }
+.iv-cables { animation: iv-shake .5s steps(2) 2.05s, iv-shake .5s steps(2) 2.35s, iv-shake .5s steps(2) 2.65s; }
+.iv-pop .iv-cable .iv-cable-body, .iv-pop .iv-cable .iv-cable-core,
+.iv-live .iv-cable .iv-cable-body, .iv-live .iv-cable .iv-cable-core,
+.iv-exit .iv-cable .iv-cable-body, .iv-exit .iv-cable .iv-cable-core { animation: iv-retract .5s cubic-bezier(.7, 0, .3, 1) forwards; }
+.iv-pop .iv-cable-comet, .iv-live .iv-cable-comet, .iv-exit .iv-cable-comet { opacity: 0; }
+
+/* the energy core charges up with three hits: taan, taan, taan */
+.iv-core {
+  position: absolute; left: 50%; top: 50%; z-index: 1;
+  width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #ffd08a 35%, rgba(232, 120, 40, 0) 70%);
+  transform: scale(0);
+  animation: iv-charge 1.2s steps(1) 1.85s forwards;
+}
+.iv-pop .iv-core, .iv-live .iv-core, .iv-exit .iv-core { animation: iv-burst .5s var(--ease) forwards; }
+.iv-beats i {
+  position: absolute; left: 50%; top: 50%; z-index: 1;
+  width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+  border: 3px solid #e8913f; box-shadow: 0 0 24px rgba(232, 145, 63, .7), inset 0 0 18px rgba(232, 145, 63, .5);
+  opacity: 0; transform: scale(.2);
+  animation: iv-ring-out .7s cubic-bezier(.2, .8, .3, 1) forwards;
+}
+.iv-beats i:nth-child(1) { animation-delay: 2.05s; }
+.iv-beats i:nth-child(2) { animation-delay: 2.35s; }
+.iv-beats i:nth-child(3) { animation-delay: 2.65s; border-width: 5px; }
+.iv-flash { position: absolute; inset: 0; z-index: 3; background: radial-gradient(circle at 50% 50%, #fff 0%, rgba(255, 220, 170, .85) 30%, rgba(255, 200, 140, 0) 70%); opacity: 0; pointer-events: none; }
+.iv-pop .iv-flash { animation: iv-flash .6s ease-out; }
 .iv-eyes rect {
   fill: #ffd27f; filter: drop-shadow(0 0 6px rgba(255, 190, 90, .9));
   transform-box: fill-box; transform-origin: center;
@@ -100,7 +145,6 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   position: absolute; left: -10%; right: -10%; height: 2px; top: 0;
   background: linear-gradient(90deg, transparent, #ffd9a0, transparent);
   box-shadow: 0 0 18px 4px rgba(255, 170, 80, .55);
-  opacity: 0; animation: iv-scan 2.8s var(--ease) .4s forwards;
 }
 
 /* copy */
@@ -198,6 +242,15 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 .iv-exit .iv-copy > * { opacity: 0; transform: translateY(-14px); filter: blur(6px); transition-delay: 0s !important; transition-duration: .5s; }
 
 @keyframes iv-draw { to { stroke-dashoffset: 0; } }
+@keyframes iv-whoosh { to { stroke-dashoffset: 0; } }
+@keyframes iv-comet { from { stroke-dashoffset: .07; } to { stroke-dashoffset: -.93; } }
+@keyframes iv-retract { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -1; } }
+@keyframes iv-shake { 0% { transform: translate(6px, -4px); } 50% { transform: translate(-5px, 3px); } 100% { transform: none; } }
+@keyframes iv-charge { 0% { transform: scale(1.4); } 17% { transform: scale(2.2); } 42% { transform: scale(3); } 67% { transform: scale(4.2); } 100% { transform: scale(4.2); } }
+@keyframes iv-burst { from { transform: scale(4.2); opacity: 1; } to { transform: scale(18); opacity: 0; } }
+@keyframes iv-ring-out { 0% { opacity: 1; transform: scale(.2); } 100% { opacity: 0; transform: scale(3.2); } }
+@keyframes iv-flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes iv-popin { 0% { transform: scale(0) rotate(-12deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
 @keyframes iv-undraw { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -1; } }
 @keyframes iv-in { to { opacity: 1; } }
 @keyframes iv-pulse { 50% { transform: translate(-50%, -50%) scale(1.08); } }
@@ -222,7 +275,7 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
   .iv-roles { grid-template-columns: 1fr; gap: 10px; }
   .iv-role { padding: 12px 14px; }
   .iv-role p { font-size: 13.5px; }
-  .iv-bot-wrap { width: clamp(120px, 20vh, 170px); transform: translateY(20vh) scale(1.3); }
+  .iv-bot-wrap { width: clamp(120px, 20vh, 170px); --drop: 19vh; }
   .iv-skip { top: 14px; bottom: auto; right: 14px; padding: 6px 8px 6px 12px; font-size: 12px; }
   .iv-skip svg { width: 22px; height: 22px; }
   .iv-title { font-size: 44px; }
@@ -232,6 +285,6 @@ html.iv-lock, html.iv-lock body { overflow: hidden !important; }
 }
 @media (max-height: 640px) and (min-width: 641px) {
   .iv-stage { flex-direction: row; gap: 32px; text-align: left; }
-  .iv-bot-wrap { transform: translateX(28vw) scale(1.2); }
+  .iv-bot-wrap { transform: translateX(26vw) scale(1.2); }
   .iv-roles { margin-left: 0; }
 }
